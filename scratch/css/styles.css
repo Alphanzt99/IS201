@@ -1,0 +1,70 @@
+html, body {
+    margin: 0;
+    height: 100%;
+  }
+  
+  body {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    background: linear-gradient(to bottom, black, grey);
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Optional: keeps the background fixed on scroll */
+  }
+
+a {
+    color: #fc5e24;
+}
+
+h1,
+h2,
+h3{
+    text-align:center;
+    color: #fc5e24;
+}
+h4{
+    color: #fc5e24; 
+    margin-left: 2.5%;
+}
+
+.resume{
+    color: burlywood;
+    text-align: left;
+    margin-left: 5%;
+    line-height: 1.5
+    ;
+}
+
+p,
+li,
+ol{
+    text-align: center;
+    color: burlywood;
+}
+img {
+    border: 5px solid rgb(242, 236, 236);
+    background-color: #fc5e24;
+    /* gives the border to the image with point  */
+    padding: 3px;
+    /* adjusts the distance of the border from the image */
+    height: 450px;
+    width: 900px;
+    margin: auto;
+    display: block;
+}
+
+/* . means total made up, not existence in HTML so far */
+
+.video-selection{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.styled-video {
+    border: 5px solid white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+li {
+    width: fit-content
+}

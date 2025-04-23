@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbell Loading Game</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars during shake */
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .game-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+            position: relative; /* For game over overlay */
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .target-weight-display {
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .target-weight-display span {
+            color: #007bff;
+        }
+
+        .barbell-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px; /* Increased height for better plate visualization */
+            margin-bottom: 30px;
+            position: relative; /* Positioning context for plates */
+        }
+
+        .barbell-bar {
+            width: 70%;
+            height: 15px;
+            background-color: #555;
+            border-radius: 5px;
+            position: relative;
+            z-index: 1; /* Bar above plates slightly */
+        }
+
+        .plate-zone {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            position: absolute;
+            top: 0;
+        }
+
+        .left-plates {
+            justify-content: flex-end; /* Plates stack towards center */
+            left: 0;
+            width: calc(15% - 5px); /* Adjust based on bar width and desired gap */
+            padding-right: 5px; /* Gap from bar */
+            flex-direction: row-reverse; /* Add plates from right to left */
+        }
+
+        .right-plates {
+            justify-content: flex-start; /* Plates stack towards center */
+            right: 0;
+            width: calc(15% - 5px); /* Adjust based on bar width and desired gap */
+            padding-left: 5px; /* Gap from bar */
+        }
+
+
+        .plate {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%; /* Circular plates */
+            margin: 0 2px; /* Small gap between plates */
+            font-weight: bold;
+            font-size: 0.7em;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+            border: 1px solid rgba(0,0,0,0.3); /* Slight border */
+            z-index: 0;
+        }
+
+        .plate:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Plate specific styles (size and color) */
+        .plate[data-weight="2.5"] { width: 40px; height: 40px; background-color: #e74c3c; }
+        .plate[data-weight="5"]   { width: 50px; height: 50px; background-color: #3498db; }
+        .plate[data-weight="10"]  { width: 60px; height: 60px; background-color: #2ecc71; }
+        .plate[data-weight="25"]  { width: 70px; height: 70px; background-color: #f1c40f; }
+        .plate[data-weight="35"]  { width: 80px; height: 80px; background-color: #9b59b6; }
+        .plate[data-weight="45"]  { width: 90px; height: 90px; background-color: #e67e22; }
+
+        .plate-selection {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .available-plate {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .available-plate:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Match available plate button colors to visual plates */
+        .available-plate[data-weight="2.5"] { background-color: #e74c3c; color: white; }
+        .available-plate[data-weight="5"]   { background-color: #3498db; color: white; }
+        .available-plate[data-weight="10"]  { background-color: #2ecc71; color: white; }
+        .available-plate[data-weight="25"]  { background-color: #f1c40f; color: white; }
+        .available-plate[data-weight="35"]  { background-color: #9b59b6; color: white; }
+        .available-plate[data-weight="45"]  { background-color: #e67e22; color: white; }
+
+        .submit-button {
+            padding: 12px 25px;
+            font-size: 1.2em;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .submit-button:hover {
+            background-color: #218838;
+        }
+        .submit-button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+
+        .flash-red {
+            background-color: #ffdddd !important; /* Flash body background */
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        @keyframes shake {
+          10%, 90% {
+            transform: translate3d(-1px, 0, 0);
+          }
+          20%, 80% {
+            transform: translate3d(2px, 0, 0);
+          }
+          30%, 50%, 70% {
+            transform: translate3d(-4px, 0, 0);
+          }
+          40%, 60% {
+            transform: translate3d(4px, 0, 0);
+          }
+        }
+
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            z-index: 10;
+            border-radius: 10px; /* Match container */
+        }
+        .game-over-overlay button {
+             margin-top: 20px;
+             padding: 10px 20px;
+             font-size: 0.8em;
+             cursor: pointer;
+         }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container" id="gameContainer">
+        <h1>Barbell Loading Challenge</h1>
+        <p> Instructions: Add weight to the bar by clicking on the weight increments below until it reaches the given number.
+            Each time you click a weight it will alternate between which side of the bar it's added on. 
+        </p>
+        <p>The Rules are as follows: 
+            <br>
+            1) The weight must be evenly distributed on both sides of the bar.
+            <br>
+            2) It must exactly meet the given weight.
+            <br>
+            3) The weights added on the bar must go in descending order, meaning the heaviest weights are added first and then the lighter ones last.
+            <br>
+            4) The weights can remove the outermost weight on a side of a barbell by clicking on it.
+            
+        </p>
+
+        <div class="info-panel">
+            <div>Score: <span id="score">0</span></div>
+            <div>Lives: <span id="lives">3</span></div>
+        </div>
+
+        <div class="target-weight-display">
+            Target Weight: <span id="targetWeight">--</span> lbs
+        </div>
+
+        <div class="barbell-area">
+            <div class="plate-zone left-plates" id="leftPlatesContainer">
+                </div>
+            <div class="barbell-bar"></div>
+            <div class="plate-zone right-plates" id="rightPlatesContainer">
+                </div>
+        </div>
+         <div style="margin-bottom: 15px; font-style: italic;">Current Total: <span id="currentTotalWeight">45</span> lbs</div>
+
+
+        <div class="plate-selection" id="plateSelection">
+            </div>
+
+        <button class="submit-button" id="submitButton">Submit</button>
+
+        <div class="game-over-overlay" id="gameOverOverlay">
+            <div>Game Over!</div>
+            <div>Final Score: <span id="finalScore">0</span></div>
+            <button id="newGameButton">Play Again?</button>
+        </div>
+    </div>
+
+    <script>
+        const baseBarWeight = 45;
+        const availableWeights = [45, 35, 25, 10, 5, 2.5]; // Descending for button generation logic
+
+        let targetWeight = 0;
+        let currentTotalWeight = baseBarWeight;
+        let leftPlates = []; // Store weights [{weight: 45, element: div}, ...]
+        let rightPlates = [];// Store weights
+        let score = 0;
+        let lives = 3;
+        let nextSide = 'right'; // Start adding to the right
+        let isGameOver = false;
+
+        // DOM Elements
+        const targetWeightDisplay = document.getElementById('targetWeight');
+        const currentTotalWeightDisplay = document.getElementById('currentTotalWeight');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const leftPlatesContainer = document.getElementById('leftPlatesContainer');
+        const rightPlatesContainer = document.getElementById('rightPlatesContainer');
+        const plateSelectionContainer = document.getElementById('plateSelection');
+        const submitButton = document.getElementById('submitButton');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const newGameButton = document.getElementById('newGameButton');
+        const bodyElement = document.body;
+
+
+        // --- Game Logic Functions ---
+
+        function generateTargetWeight() {
+            let potentialTarget;
+            let minAdditionalWeight = 5; // Smallest pair is 2.5 + 2.5
+            let maxAdditionalWeight = 500; // Arbitrary reasonable max
+
+            do {
+                // Ensure added weight is even and >= minAdditionalWeight
+                let randomEvenAddition = Math.floor(Math.random() * (maxAdditionalWeight / 2)) * 2;
+                 if (randomEvenAddition < minAdditionalWeight) {
+                     randomEvenAddition = minAdditionalWeight
+                 }
+                 // Ensure total is multiple of 5 (since bar is 45 (mult of 5) and plates are mult of 2.5, need even number of 2.5 plates if used)
+                 // An even addition ensures target-base is even. Need total to be mult of 5.
+                 potentialTarget = baseBarWeight + randomEvenAddition;
+             } while (potentialTarget % 5 !== 0); // Ensures total is a multiple of 5
+
+             targetWeight = potentialTarget;
+             targetWeightDisplay.textContent = targetWeight;
+        }
+
+        function createPlateElement(weight) {
+            const plateDiv = document.createElement('div');
+            plateDiv.classList.add('plate');
+            plateDiv.dataset.weight = weight; // Store weight in data attribute
+            plateDiv.textContent = weight; // Display weight number
+            plateDiv.style.backgroundColor = getPlateColor(weight); // Optional: Apply color if needed dynamically
+             // Apply specific size/color classes based on weight
+            const weightClass = `plate-${String(weight).replace('.', '_')}`; // e.g., plate-2_5
+            plateDiv.classList.add(weightClass); // Add class for potential specific styling
+            plateDiv.setAttribute('title', `${weight} lbs - Click to remove`); // Tooltip
+
+             // Add click listener for removal
+            plateDiv.addEventListener('click', handlePlateRemoval);
+
+            return plateDiv;
+        }
+
+         // Helper function to get consistent color (matches CSS)
+        function getPlateColor(weight) {
+             switch (weight) {
+                case 2.5: return '#e74c3c';
+                case 5:   return '#3498db';
+                case 10:  return '#2ecc71';
+                case 25:  return '#f1c40f';
+                case 35:  return '#9b59b6';
+                case 45:  return '#e67e22';
+                default:  return '#7f8c8d'; // Default grey
+            }
+        }
+
+         function addPlate(weight) {
+             if (isGameOver) return;
+
+             const targetContainer = nextSide === 'left' ? leftPlatesContainer : rightPlatesContainer;
+             const targetArray = nextSide === 'left' ? leftPlates : rightPlates;
+
+             // Rule 3: Check Descending Order
+             if (targetArray.length > 0) {
+                 const lastPlateWeight = targetArray[targetArray.length - 1].weight;
+                 if (weight > lastPlateWeight) {
+                     alert(`Rule Violation: Weights must be added in descending order on each side. Cannot add ${weight} lbs after ${lastPlateWeight} lbs.`);
+                     return; // Stop adding
+                 }
+             }
+
+             const plateElement = createPlateElement(weight);
+
+             // Visually add plate
+              if (nextSide === 'left') {
+                 // For left side (flex-direction: row-reverse), append adds to the "start" (rightmost)
+                 targetContainer.appendChild(plateElement);
+             } else {
+                 // For right side (default flex), append adds to the end (rightmost)
+                 targetContainer.appendChild(plateElement);
+             }
+
+
+             // Update data
+             targetArray.push({ weight: weight, element: plateElement });
+             currentTotalWeight += weight;
+             currentTotalWeightDisplay.textContent = currentTotalWeight;
+
+
+             // Toggle side for next addition
+             nextSide = nextSide === 'left' ? 'right' : 'left';
+         }
+
+
+         function handlePlateRemoval(event) {
+             if (isGameOver) return;
+
+             const plateElement = event.currentTarget; // The clicked plate div
+             const weight = parseFloat(plateElement.dataset.weight);
+             let side = '';
+             let plateArray = null;
+             let container = null;
+
+             // Determine which side the plate belongs to
+             if (leftPlatesContainer.contains(plateElement)) {
+                 side = 'left';
+                 plateArray = leftPlates;
+                 container = leftPlatesContainer;
+             } else if (rightPlatesContainer.contains(plateElement)) {
+                 side = 'right';
+                 plateArray = rightPlates;
+                 container = rightPlatesContainer;
+             } else {
+                 console.error("Clicked plate doesn't belong to either side?");
+                 return;
+             }
+
+             // Rule 4: Check if it's the outermost plate on that side
+             let isOutermost = false;
+             if (container.children.length > 0) {
+                 if (side === 'left' && container.lastChild === plateElement) { // First child due to row-reverse
+                     isOutermost = true;
+                 } else if (side === 'right' && container.lastChild === plateElement) { // Last child for standard row
+                    isOutermost = true;
+                }
+             }
+
+
+             if (isOutermost) {
+                 // Find the corresponding object in the array to remove
+                 const plateIndex = plateArray.findIndex(p => p.element === plateElement);
+
+                 if (plateIndex > -1) {
+                     // Remove from data array
+                     plateArray.splice(plateIndex, 1);
+
+                     // Remove from DOM
+                     plateElement.remove(); // No need to check parent, just remove the element
+
+                     // Update total weight
+                     currentTotalWeight -= weight;
+                     currentTotalWeightDisplay.textContent = currentTotalWeight;
+
+                     // Recalculate next side based on total plates remaining
+                    const totalPlatesOnBar = leftPlates.length + rightPlates.length;
+                     nextSide = totalPlatesOnBar % 2 === 0 ? 'right' : 'left';
+
+
+                 } else {
+                     console.error("Could not find plate data for removal:", plateElement);
+                 }
+             } else {
+                // Optionally provide feedback that only the outermost can be removed
+                // console.log("Can only remove the outermost plate on each side.");
+                plateElement.style.animation = 'shakeHorizontal 0.3s';
+                 setTimeout(() => plateElement.style.animation = '', 300);
+                 // Add temporary CSS for this:
+                 // @keyframes shakeHorizontal { 50% { transform: translateX(5px); } 100% { transform: translateX(0); } }
+             }
+         }
+
+        function checkAnswer() {
+            if (isGameOver) return;
+
+            let leftTotal = leftPlates.reduce((sum, p) => sum + p.weight, 0);
+            let rightTotal = rightPlates.reduce((sum, p) => sum + p.weight, 0);
+
+            let isCorrect = false;
+            leterrorMessage = "";
+
+             // Rule 1: Even Distribution Check
+            if (leftTotal !== rightTotal) {
+                 errorMessage = "Weights are not evenly distributed!";
+             }
+             // Rule 2: Exact Match Check
+             else if (currentTotalWeight !== targetWeight) {
+                 errorMessage = `Incorrect total weight! Expected ${targetWeight}, got ${currentTotalWeight}.`;
+            } else {
+                 // If both rules pass (implicitly checked by reaching here after checking total)
+                 isCorrect = true;
+            }
+
+            if (isCorrect) {
+                // Correct Answer
+                score++;
+                scoreDisplay.textContent = score;
+                triggerFeedback(true); // Optional positive feedback
+                resetLevel();
+            } else {
+                // Incorrect Answer
+                lives--;
+                livesDisplay.textContent = lives;
+                triggerFeedback(false, errorMessage); // Pass error message for optional display
+
+                if (lives <= 0) {
+                    endGame();
+                }
+            }
+        }
+
+        function triggerFeedback(isCorrect, message = "") {
+             if (!isCorrect) {
+                 bodyElement.classList.add('flash-red');
+                 gameContainer.classList.add('shake');
+                 if (message) {
+                    // Could display this message somewhere temporarily
+                     console.log("Incorrect:", message);
+                      // alert(message); // Simple feedback
+                 }
+
+                 // Remove feedback classes after animation
+                 setTimeout(() => {
+                     bodyElement.classList.remove('flash-red');
+                     gameContainer.classList.remove('shake');
+                 }, 500); // Match CSS animation duration
+             } else {
+                 // Optional: Add positive feedback animation/style change
+                 // e.g., gameContainer.style.borderColor = 'lightgreen';
+                // setTimeout(() => gameContainer.style.borderColor = '', 500);
+             }
+        }
+
+        function resetLevel() {
+            // Clear data arrays
+            leftPlates = [];
+            rightPlates = [];
+
+            // Clear visual plates from DOM
+            leftPlatesContainer.innerHTML = '';
+            rightPlatesContainer.innerHTML = '';
+
+            // Reset weights and side
+            currentTotalWeight = baseBarWeight;
+            currentTotalWeightDisplay.textContent = currentTotalWeight;
+            nextSide = 'right';
+
+            // Generate new target
+            generateTargetWeight();
+        }
+
+        function endGame() {
+            isGameOver = true;
+            finalScoreDisplay.textContent = score;
+            gameOverOverlay.style.display = 'flex'; // Show overlay
+            submitButton.disabled = true; // Disable submit
+             // Optionally disable plate buttons too
+             document.querySelectorAll('.available-plate').forEach(btn => btn.disabled = true);
+        }
+
+        function startGame() {
+            isGameOver = false;
+            score = 0;
+            lives = 3;
+            scoreDisplay.textContent = score;
+            livesDisplay.textContent = lives;
+            gameOverOverlay.style.display = 'none'; // Hide overlay
+            submitButton.disabled = false; // Enable submit
+            document.querySelectorAll('.available-plate').forEach(btn => btn.disabled = false); // Re-enable buttons
+
+            resetLevel(); // Setup first level
+        }
+
+        // --- Initialization ---
+
+        function initializeGame() {
+            // Create available plate buttons
+            plateSelectionContainer.innerHTML = ''; // Clear existing buttons if any
+            availableWeights.forEach(weight => {
+                const button = document.createElement('button');
+                button.classList.add('available-plate');
+                 // Add specific class based on weight for styling
+                const weightClass = `plate-${String(weight).replace('.', '_')}`;
+                button.classList.add(weightClass);
+                button.dataset.weight = weight;
+                button.textContent = `${weight} lbs`;
+                button.addEventListener('click', () => addPlate(weight));
+                 // Match button background color to plate color
+                 button.style.backgroundColor = getPlateColor(weight);
+
+                plateSelectionContainer.appendChild(button);
+            });
+
+             // Add event listeners
+            submitButton.addEventListener('click', checkAnswer);
+            newGameButton.addEventListener('click', startGame);
+
+             // Add the temporary keyframes for visual feedback on incorrect removal
+             const styleSheet = document.styleSheets[0];
+             try { // Use try/catch in case insertRule isn't supported or fails
+                styleSheet.insertRule(`
+                    @keyframes shakeHorizontal {
+                        0%, 100% { transform: translateX(0); }
+                        25% { transform: translateX(-4px); }
+                        75% { transform: translateX(4px); }
+                    }`, styleSheet.cssRules.length);
+             } catch (e) {
+                console.warn("Could not add keyframes dynamically: ", e);
+             }
+
+            // Start the first game
+            startGame();
+        }
+
+        // Add initial styles for plates based on weight (redundant with CSS but ensures dynamic creation works)
+         // This part is better handled purely by CSS using the data-weight attribute selector as done in the <style> block.
+         // Keeping this structure in case you need dynamic styling beyond simple CSS selectors later.
+         function applyPlateStyles() {
+             availableWeights.forEach(weight => {
+                // Example: Could dynamically create rules if needed, but CSS is preferred.
+                // console.log(`Styling for plate ${weight}`);
+            });
+         }
+         applyPlateStyles();
+
+
+        // --- Start Game on Load ---
+        document.addEventListener('DOMContentLoaded', initializeGame);
+
+    </script>
+
+</body>
+</html>
